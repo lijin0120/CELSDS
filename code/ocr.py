@@ -67,8 +67,7 @@ def process(
             continue
         teleplay_videos_dir = os.path.join(video_root_dir, teleplay, "videos")
         for teleplay_video in os.listdir(teleplay_videos_dir):
-            teleplay_video_episode = get_episode(teleplay_video.split(".")[0])
-            teleplay_video_episode = f"{int(teleplay_video_episode):03}"
+            teleplay_video_episode = str(get_episode(teleplay_video.split(".")[0]))
             if teleplay == "新边城浪子" and teleplay_video_episode == "4":
                 continue
             video_path = os.path.join(teleplay_videos_dir, teleplay_video)

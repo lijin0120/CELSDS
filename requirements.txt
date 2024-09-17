@@ -7,3 +7,7 @@ paddlepaddle
 cn2an
 zhconv
 openai
+pydub
+librosa
+torch
+wespeaker

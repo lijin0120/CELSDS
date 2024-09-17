@@ -1,9 +1,13 @@
 import json
 import re
+import os
 
+import numpy as np
+import soundfile as sf
 import cn2an
 from zhconv import convert
 from difflib import SequenceMatcher
+from scipy.spatial.distance import cosine
 
 
 def read_json(json_file):
@@ -55,6 +59,49 @@ def text_similarity(text1, text2):
 
 def remove_punctuation(text):
     return re.sub(r'[，。！？、…·【】{}「」《》“”‘’：;,.!?\'\"\-\(\)\[\]\s]', '', text)
+
+
+def npywrite(destpath, arr):
+    destpath = os.path.abspath(destpath)
+    destdir = os.path.dirname(destpath)
+    if not os.path.exists(destdir):
+        os.makedirs(destdir)
+    np.save(destpath, arr)
+
+
+def audiowrite(destpath, audio, sample_rate=16000):
+    destpath = os.path.abspath(destpath)
+    destdir = os.path.dirname(destpath)
+    if not os.path.exists(destdir):
+        os.makedirs(destdir)
+    sf.write(destpath, audio, sample_rate)
+
+
+def load_npy(file_path):
+    return np.load(file_path)
+
+
+def calculate_similarity(vec1, vec2):
+    return 1 - cosine(vec1, vec2)
+
+
+def divide_list(lst, n):
+    base = len(lst) // n
+    remainder = len(lst) % n
+
+    divided_lists = []
+
+    start_index = 0
+    while start_index < len(lst):
+        if remainder > 0:
+            divided_lists.append(lst[start_index:start_index + base + 1])
+            remainder -= 1
+            start_index += base + 1
+        else:
+            divided_lists.append(lst[start_index:start_index + base])
+            start_index += base
+
+    return divided_lists
 
 
 def get_episode(file_name):

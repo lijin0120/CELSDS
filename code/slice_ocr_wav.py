@@ -5,24 +5,21 @@ from tqdm import tqdm
 
 from extract_speaker_embedding import extract_speaker_embedding
 from get_wav_speaker import get_wav_speaker_label
-from tool import read_json, write_json, get_teleplay_wav_episode, divide_list
+from tool import read_json, write_json, get_episode, divide_list
 
 
-def get_teleplay_episode_wav_dict(
-        teleplay_episode_dict,
-        data_root_dir
-):
+def get_teleplay_episode_wav_dict(data_root_dir):
     teleplay_episode_wav_dict = {}
     for teleplay in os.listdir(data_root_dir):
-        if teleplay in teleplay_episode_dict.keys():
-            teleplay_episode_wav_dict[teleplay] = {}
-            teleplay_wav_dir = os.path.join(data_root_dir, teleplay, "wavs")
-            for teleplay_wav in os.listdir(teleplay_wav_dir):
-                teleplay_wav_episode = get_teleplay_wav_episode(teleplay_wav)
-                if teleplay_wav_episode == teleplay_episode_dict[teleplay]:
-                    continue
-                teleplay_wav_path = os.path.join(teleplay_wav_dir, teleplay_wav)
-                teleplay_episode_wav_dict[teleplay][teleplay_wav_episode] = teleplay_wav_path
+        if teleplay in ['Done', 'log']:
+            continue
+        teleplay_episode_wav_dict[teleplay] = {}
+        teleplay_wav_dir = os.path.join(data_root_dir, teleplay, "wavs")
+        for teleplay_wav in os.listdir(teleplay_wav_dir):
+            teleplay_wav_episode = get_episode(teleplay_wav)
+            teleplay_wav_episode = f"{int(teleplay_wav_episode):03}"
+            teleplay_wav_path = os.path.join(teleplay_wav_dir, teleplay_wav)
+            teleplay_episode_wav_dict[teleplay][teleplay_wav_episode] = teleplay_wav_path
     return teleplay_episode_wav_dict
 
 
@@ -37,30 +34,25 @@ def slice_wav(
     segment_audio.export(output_path, format="wav")
 
 
-def slice_ocr_wav_and_generate_single_wav_json(
-        teleplay_episode_dict,
+def slice_ocr_wav_and_generate_segment_wav_json(
         teleplay_episode_wav_dict,
         ocr_results_dir,
         time_bias,
-        segment_wav_output_dir,
-        single_wav_json_result_output_path
+        segment_wav_save_dir,
+        segment_wav_json_path
 ):
-    single_wav_results = {}
+    segment_wav_results = {}
     for teleplay in tqdm(os.listdir(ocr_results_dir)):
-        if teleplay not in teleplay_episode_dict.keys():
+        if teleplay in ['Done', 'log']:
             continue
-        # print(teleplay)
-        single_wav_results[teleplay] = {}
+        segment_wav_results[teleplay] = {}
         teleplay_ocr_results_dir = os.path.join(ocr_results_dir, teleplay)
         for teleplay_episode_ocr_result_file in tqdm(os.listdir(teleplay_ocr_results_dir)):
             episode = teleplay_episode_ocr_result_file.split("_")[1]
             episode = f"{int(episode):03}"
-            if episode == teleplay_episode_dict[teleplay]:
-                continue
-            # print(episode)
-            single_wav_results[teleplay][episode] = []
+            segment_wav_results[teleplay][episode] = []
             teleplay_episode_wav = teleplay_episode_wav_dict[teleplay][episode]
-            teleplay_episode_segment_wav_output_dir = os.path.join(segment_wav_output_dir, teleplay, episode)
+            teleplay_episode_segment_wav_output_dir = os.path.join(segment_wav_save_dir, teleplay, episode)
             os.makedirs(teleplay_episode_segment_wav_output_dir, exist_ok=True)
 
             teleplay_episode_ocr_result_data = read_json(
@@ -90,7 +82,7 @@ def slice_ocr_wav_and_generate_single_wav_json(
                     )
 
                 segment_wav = AudioSegment.from_wav(segment_wav_path)
-                single_wav_results[teleplay][episode].append({
+                segment_wav_results[teleplay][episode].append({
                     "start_time": start_time,
                     "end_time": end_time,
                     "wav_name": segment_wav_name,
@@ -100,29 +92,29 @@ def slice_ocr_wav_and_generate_single_wav_json(
                     "sample_rate": segment_wav.frame_rate,
                     "ocr_text": "，".join(item["text"]) + "。"
                 })
-            single_wav_results[teleplay][episode] = sorted(single_wav_results[teleplay][episode],
-                                                           key=lambda x: int(x['start_time']))
+            segment_wav_results[teleplay][episode] = sorted(segment_wav_results[teleplay][episode],
+                                                            key=lambda x: int(x['start_time']))
 
-    write_json(single_wav_results, single_wav_json_result_output_path)
-    return single_wav_results
+    write_json(segment_wav_results, segment_wav_json_path)
+    return segment_wav_results
 
 
-def extract_single_wav_speaker_embedding(
+def extract_segment_wav_speaker_embedding(
         available_gpus,
         max_processes_per_gpu,
         speaker_model_path,
-        single_wav_path,
-        wav_root_dir,
-        wav_speaker_embedding_root_dir,
-        wav_16k_root_dir
+        segment_wav_json_path,
+        segment_wav_save_dir,
+        segment_wav_speaker_embedding_save_dir,
+        segment_wav_16k_save_dir
 ):
-    single_wav_objects = read_json(single_wav_path)
+    segment_wav_objects = read_json(segment_wav_json_path)
     input_data = []
-    for teleplay in single_wav_objects.keys():
-        for episode in single_wav_objects[teleplay].keys():
-            for single_wav_object in single_wav_objects[teleplay][episode]:
-                wav_path = single_wav_object["path"]
-                sample_rate = single_wav_object["sample_rate"]
+    for teleplay in segment_wav_objects.keys():
+        for episode in segment_wav_objects[teleplay].keys():
+            for segment_wav_object in segment_wav_objects[teleplay][episode]:
+                wav_path = segment_wav_object["path"]
+                sample_rate = segment_wav_object["sample_rate"]
                 input_data.append(f"{wav_path}\t{sample_rate}")
 
     extract_speaker_embedding(
@@ -130,111 +122,115 @@ def extract_single_wav_speaker_embedding(
         max_processes_per_gpu,
         speaker_model_path,
         input_data,
-        wav_root_dir,
-        wav_speaker_embedding_root_dir,
-        wav_16k_root_dir
+        segment_wav_save_dir,
+        segment_wav_speaker_embedding_save_dir,
+        segment_wav_16k_save_dir
     )
 
 
-def get_single_wav_speaker_label(
-        single_wav_result_path,
-        segment_wav_speaker_embedding_root_dir,
-        teleplay_speaker_embedding_root_dir,
-        output_file_path
+def get_segment_wav_speaker_label(
+        segment_wav_json_path,
+        segment_wav_speaker_embedding_save_dir,
+        reference_speaker_embedding_save_dir
 ):
-    input_data = read_json(single_wav_result_path)
+    input_data = read_json(segment_wav_json_path)
     get_wav_speaker_label(
         input_data,
-        segment_wav_speaker_embedding_root_dir,
-        teleplay_speaker_embedding_root_dir,
-        output_file_path
+        segment_wav_speaker_embedding_save_dir,
+        reference_speaker_embedding_save_dir,
+        segment_wav_json_path
     )
 
 
-def merge_single_wav_to_plot(
-        single_wav_result_path,
+def merge_segment_wav_to_dialogue_segment(
+        segment_wav_json_path,
         divide_num,
-        plot_result_path
+        dialogue_segment_save_path
 ):
-    single_wav_result = read_json(single_wav_result_path)
+    segment_wav_result = read_json(segment_wav_json_path)
 
-    plots = {}
-    for teleplay in single_wav_result.keys():
-        plots[teleplay] = {}
-        for episode in single_wav_result[teleplay].keys():
-            plots[teleplay][episode] = []
-            teleplay_episode_single_wav_objects = single_wav_result[teleplay][episode]
-            divided_teleplay_episode_single_wav_objects = divide_list(teleplay_episode_single_wav_objects, divide_num)
-            for plot_idx, plot in enumerate(divided_teleplay_episode_single_wav_objects):
+    dialogue_segments = {}
+    for teleplay in segment_wav_result.keys():
+        dialogue_segments[teleplay] = {}
+        for episode in segment_wav_result[teleplay].keys():
+            dialogue_segments[teleplay][episode] = []
+            teleplay_episode_segment_wav_objects = segment_wav_result[teleplay][episode]
+            divided_teleplay_episode_segment_wav_objects = divide_list(teleplay_episode_segment_wav_objects, divide_num)
+            for dialogue_segment_idx, dialogue_segment in enumerate(divided_teleplay_episode_segment_wav_objects):
                 text = ""
                 wavs_path = []
-                for item in plot:
+                for item in dialogue_segment:
                     text = text + item["speaker"] + "：“" + item["ocr_text"] + "”"
                     wavs_path.append(item["path"])
-                plots[teleplay][episode].append({
-                    "plot_index": plot_idx,
-                    "text": text,
+                dialogue_segments[teleplay][episode].append({
+                    "dialogue_segment_index": dialogue_segment_idx,
+                    "dialogue_segment": text,
                     "wavs_path": wavs_path
                 })
-    write_json(plots, plot_result_path)
+    write_json(dialogue_segments, dialogue_segment_save_path)
+
+
+def main(
+        audio_root_dir,
+        filtered_and_merged_ocr_results_dir,
+        segment_wav_save_dir,
+        segment_wav_json_path,
+        available_gpus,
+        max_processes_per_gpu,
+        speaker_model_path,
+        segment_wav_speaker_embedding_save_dir,
+        segment_wav_16k_save_dir,
+        reference_speaker_embedding_save_dir,
+        dialogue_segment_save_path,
+        time_bias,
+        divide_num
+):
+    teleplay_episode_wav_dict = get_teleplay_episode_wav_dict(audio_root_dir)
+    slice_ocr_wav_and_generate_segment_wav_json(
+        teleplay_episode_wav_dict,
+        filtered_and_merged_ocr_results_dir,
+        time_bias,
+        segment_wav_save_dir,
+        segment_wav_json_path
+    )
+    extract_segment_wav_speaker_embedding(
+        available_gpus,
+        max_processes_per_gpu,
+        speaker_model_path,
+        segment_wav_json_path,
+        segment_wav_save_dir,
+        segment_wav_speaker_embedding_save_dir,
+        segment_wav_16k_save_dir
+    )
+    get_segment_wav_speaker_label(
+        segment_wav_json_path,
+        segment_wav_speaker_embedding_save_dir,
+        reference_speaker_embedding_save_dir,
+    )
+    merge_segment_wav_to_dialogue_segment(
+        segment_wav_json_path,
+        divide_num,
+        dialogue_segment_save_path
+    )
 
 
 if __name__ == "__main__":
-    teleplay_episode_dict = {
-        "书剑恩仇录": "020",
-        "何以笙箫默": "026",
-        "侠客行": "023",
-        "大明王朝1566": "042",
-        "天涯·明月·刀2012": "039",
-        "宫锁心玉": "025",
-        "庆余年": "021",
-        "新边城浪子": "047",
-        "楚留香新传": "038",
-        "沉香如屑": "058",
-        "流星·蝴蝶·剑": "009",
-        "还珠格格": "003",
-    }
-    data_root_dir = "/CDShare2/2023/wangtianrui/dataset/SUSC/v2"
-    filtered_and_merged_ocr_results_dir = "/Work21/2023/lijin/workspace/Code/SUSC/data/json/susc/train_set/ocr/filtered_and_merged_5fps"
-    time_bias = 400
-    segment_wav_root_dir = "/CDShare2/2023/wangtianrui/dataset/SUSC/train/segment_wavs/ocr/wavs"
-    single_wav_result_path = "/Work21/2023/lijin/workspace/Code/SUSC/data/json/susc/train_set/train_ocr_single_wav.json"
-    divide_num = 15
-    plot_result_path = "/Work21/2023/lijin/workspace/Code/SUSC/data/json/susc/train_set/train_plots.json"
+    import argparse
 
-    available_gpus = [5]
-    max_processes_per_gpu = 1
-    speaker_model_path = '/Work20/2023/wangtianrui/model_temp/wespeaker/voxceleb_resnet293_LM'
-    segment_wav_speaker_embedding_root_dir = "/CDShare2/2023/wangtianrui/dataset/SUSC/train/segment_wavs/ocr/speaker_embedding"
-    segment_wav_16k_root_dir = "/CDShare2/2023/wangtianrui/dataset/SUSC/train/segment_wavs/ocr/wavs_16k"
-    teleplay_speaker_embedding_root_dir = "/CDShare2/2023/wangtianrui/dataset/SUSC/v2_16k"
+    parser = argparse.ArgumentParser()
+    parser.add_argument("audio_root_dir", type=str)
+    parser.add_argument("filtered_and_merged_ocr_results_dir", type=str)
+    parser.add_argument("segment_wav_save_dir", type=str)
+    parser.add_argument("segment_wav_json_path", type=str)
+    parser.add_argument("available_gpus", type=list)
+    parser.add_argument("max_processes_per_gpu", type=int)
+    parser.add_argument("speaker_model_path", type=str)
+    parser.add_argument("segment_wav_speaker_embedding_save_dir", type=str)
+    parser.add_argument("segment_wav_16k_save_dir", type=str)
+    parser.add_argument("reference_speaker_embedding_save_dir", type=str)
+    parser.add_argument("dialogue_segment_save_path", type=str)
+    parser.add_argument("--time_bias", type=int, default=400)
+    parser.add_argument("--divide_num", type=int, default=15)
+    args = parser.parse_args()
 
-    # teleplay_episode_wav_dict = get_teleplay_episode_wav_dict(teleplay_episode_dict, data_root_dir)
-    # slice_ocr_wav_and_generate_single_wav_json(
-    #     teleplay_episode_dict,
-    #     teleplay_episode_wav_dict,
-    #     filtered_and_merged_ocr_results_dir,
-    #     time_bias,
-    #     segment_wav_root_dir,
-    #     single_wav_result_path
-    # )
-    # extract_single_wav_speaker_embedding(
-    #     available_gpus,
-    #     max_processes_per_gpu,
-    #     speaker_model_path,
-    #     single_wav_result_path,
-    #     segment_wav_root_dir,
-    #     segment_wav_speaker_embedding_root_dir,
-    #     segment_wav_16k_root_dir
-    # )
-    # get_single_wav_speaker_label(
-    #     single_wav_result_path,
-    #     segment_wav_speaker_embedding_root_dir,
-    #     teleplay_speaker_embedding_root_dir,
-    #     single_wav_result_path
-    # )
-    # merge_single_wav_to_plot(
-    #     single_wav_result_path,
-    #     divide_num,
-    #     plot_result_path
-    # )
+    main(**vars(args))
