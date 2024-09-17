@@ -226,6 +226,17 @@ such as `data/teleplay_episode_summary.json`. An example of the JSON file is as 
 
 ## Step 10: Generate Scripts
 
+Before using ChatGPT to generate the script, we can modify the relevant parameters for calling the ChatGPT API in
+the `code/llm.py` file, as shown below:
+
+```
+llm_name = "gpt-3.5-turbo"
+llm_configure = {
+    "openai_api_key": "openai_api_key",
+    "openai_base_url": 'openai_base_url',
+}
+```
+
 To generate scripts using ChatGPT, run
 
 ```sh

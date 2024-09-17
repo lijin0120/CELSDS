@@ -219,7 +219,7 @@ def process_llm_data(args):
                         "dialogue_segment_index": dialogue_segment_idx,
                         "prompt_index": prompt_idx,
                         "dialogue_segment": dialogue_segment,
-                        "scenario": llm_result,
+                        "script": llm_result,
                         "acceptable": True,
                         "wavs_path": wavs_path
                     })
@@ -233,7 +233,7 @@ def process_llm_data(args):
                     "dialogue_segment_index": dialogue_segment_idx,
                     "prompt_index": prompt_idx,
                     "dialogue_segment": dialogue_segment,
-                    "scenario": all_result,
+                    "script": all_result,
                     "acceptable": False,
                     "wavs_path": wavs_path
                 })

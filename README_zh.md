@@ -120,6 +120,7 @@ python code/filter_and_merge_ocr_results.py data/ocr/original/ data/ocr/filter_a
   ...
 }
 ```
+
 文件`data/reference_speaker_wav.zip`中已给出本数据集使用到的所有参考人物语音及说话人嵌入。
 
 ## 步骤 7: 提取参考人物语音的说话人嵌入
@@ -203,6 +204,16 @@ python code/slice_ocr_wav.py data/video_and_audio data/ocr/filter_and_merged dat
 ```
 
 ## 步骤 10: 生成剧本
+
+在使用ChatGPT生成剧本前，可以修改`code/llm.py`文件中有关ChatGPT接口调用的相关参数，如下：
+
+```
+llm_name = "gpt-3.5-turbo"
+llm_configure = {
+    "openai_api_key": "openai_api_key",
+    "openai_base_url": 'openai_base_url',
+}
+```
 
 使用ChatGPT生成剧本，运行
 
