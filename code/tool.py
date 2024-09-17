@@ -2,6 +2,8 @@ import json
 import re
 
 import cn2an
+from zhconv import convert
+from difflib import SequenceMatcher
 
 
 def read_json(json_file):
@@ -29,6 +31,30 @@ def normalize_text(text):
     text = unify_symbols(text)
     normalized_text = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f\xa0]', ' ', text)
     return normalized_text
+
+
+def retain_chinese_and_english(text):
+    return re.sub(r'[^\u4e00-\u9fffa-zA-Z，、。]', '', text)
+
+
+def retain_chinese(text):
+    return re.sub(r'[^\u4e00-\u9fff，、。]', '', text)
+
+
+def convert_traditional_to_simplified(text):
+    return convert(text, 'zh-hans')
+
+
+def contains_chinese(text):
+    return bool(re.search(r'[\u4e00-\u9fff]', text))
+
+
+def text_similarity(text1, text2):
+    return SequenceMatcher(None, text1, text2).ratio()
+
+
+def remove_punctuation(text):
+    return re.sub(r'[，。！？、…·【】{}「」《》“”‘’：;,.!?\'\"\-\(\)\[\]\s]', '', text)
 
 
 def get_episode(file_name):

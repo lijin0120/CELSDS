@@ -5,3 +5,5 @@ moviepy
 paddleocr
 paddlepaddle
 cn2an
+zhconv
+openai

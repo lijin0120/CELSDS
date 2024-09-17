@@ -5,26 +5,16 @@ import re
 import time
 from multiprocessing import Pool
 
-import httpx
 import openai
 from tqdm import tqdm
-from volcenginesdkarkruntime import Ark
-import qianfan
 
 from tool import read_json, normalize_text, text_similarity, remove_punctuation
 
-openai_llm = [
-    "gpt-3.5-turbo",
-    "claude-3-haiku-20240307",
-]
-doubao_llm = [
-    "ep-20240629095146-29dnq",
-    "ep-20240825121924-tn7rs"
-]
-qianfan_llm = [
-    "completions_pro",
-    "ERNIE-3.5-8K"
-]
+llm_name = "gpt-3.5-turbo"
+llm_configure = {
+    "openai_api_key": "openai_api_key",
+    "openai_base_url": 'openai_base_url',
+}
 
 return_status_dict = {
     "对话内容不一致": "你刚才的结果不符合我的要求：不要对内容进行删减、合并、扩写或者总结，你仅可以纠正对白中存在的错别字。请重新理解我的要求并给出符合要求的结果。",
@@ -43,43 +33,13 @@ class ChatGPT:
         response = openai.chat.completions.create(
             model=self.llm_name,
             messages=[
-                # {"role": "system", "content": "You are a helpful assistant."},
                 {"role": "user", "content": txt}
             ]
         )
-        print(response)
         return response.choices[0].message.content
 
-
-class Doubao:
-    def __init__(self, llm_name, ark_api_key, ark_base_url):
-        self.llm_name = llm_name
-        self.ark_base_url = ark_base_url
-        self.proxies = {
-            'http://': None,  # 代理1
-            'https://': None,  # 代理2
-        }
-        os.environ["ARK_API_KEY"] = ark_api_key
-
-    def inference(self, txt):
-        client = Ark(
-            base_url=self.ark_base_url,
-            http_client=httpx.Client(proxies=self.proxies),
-        )
-        completion = client.chat.completions.create(
-            model=self.llm_name,
-            messages=[
-                {"role": "user", "content": txt},
-            ],
-        )
-        return completion.choices[0].message.content
-
     def multi_turn(self, question1, answer1, question2):
-        client = Ark(
-            base_url=self.ark_base_url,
-            http_client=httpx.Client(proxies=self.proxies),
-        )
-        completion = client.chat.completions.create(
+        response = openai.chat.completions.create(
             model=self.llm_name,
             messages=[
                 {"role": "user", "content": question1},
@@ -87,54 +47,7 @@ class Doubao:
                 {"role": "user", "content": question2}
             ],
         )
-        return completion.choices[0].message.content
-
-
-class Ernie:
-    def __init__(self, llm_name, qianfan_ak, qianfan_sk):
-        self.llm_name = llm_name
-        self.qianfan_ak = qianfan_ak
-        self.qianfan_sk = qianfan_sk
-        os.environ["QIANFAN_AK"] = qianfan_ak
-        os.environ["QIANFAN_SK"] = qianfan_sk
-
-    def inference(self, txt):
-        result = qianfan.ChatCompletion().do(
-            model=self.llm_name,
-            messages=[
-                {"role": "user", "content": txt}
-            ],
-            temperature=0.95,
-            top_p=0.8,
-            penalty_score=1,
-            disable_search=False,
-            enable_citation=False
-        )["result"]
-        return result
-
-    def multi_turn(self, question1, answer1, question2):
-        result = qianfan.ChatCompletion().do(
-            model=self.llm_name,
-            messages=[
-                {"role": "user", "content": question1},
-                {"role": "assistant", "content": answer1},
-                {"role": "user", "content": question2}
-            ],
-            temperature=0.95,
-            top_p=0.8,
-            penalty_score=1,
-            disable_search=False,
-            enable_citation=False
-        )["result"]
-        return result
-
-
-def remove_chinese_punctuation(text):
-    chinese_punctuation = "，。！？；：“”‘’（）【】《》、"
-    # 创建一个翻译表，将中文标点符号映射为空字符
-    trans_table = str.maketrans('', '', chinese_punctuation)
-    # 使用 translate 方法进行替换
-    return text.translate(trans_table)
+        return response.choices[0].message.content
 
 
 def check_llm_result(result, plot, train_or_test):
@@ -194,8 +107,6 @@ def check_llm_result(result, plot, train_or_test):
         sim = text_similarity(dialogues_content, remove_punctuation(speech_content))
         if sim < 0.95:
             print("对话内容不一致")
-            # print(dialogues_content)
-            # print(remove_punctuation(speech_content))
             return new_result, False, sim, "对话内容不一致"
 
         if len(dialogues) != len(speech_contents):
@@ -213,7 +124,6 @@ def check_llm_result(result, plot, train_or_test):
 
 
 def get_llm_prompts(train_or_test):
-    print(train_or_test)
     llm_prompts = {
         "train": [
             """你现在是一名编剧，你可以根据故事的背景，角色说话的对白编写出剧本。所有角色的对白都必须出现在剧本中，不能缺失。如果一个角色连续说话，禁止你把对白内容进行合并。如果对白中存在错别字，你可以进行纠正，但仅限于纠错，不能对对白进行扩写、精简或总结。你会首先定位出输入的对话属于背景中的哪一段描述，再结合背景中不同角色之间的关系写出符合说话内容的剧本。在人物话语的上一行可以穿插对环境变化的描述，对人物的神态、动作、内心活动、说话语气的描述，描述尽可能地详细。
@@ -262,40 +172,29 @@ def get_llm_prompts(train_or_test):
     return llm_prompts[train_or_test]
 
 
-def process_llm_data(
-        llm_object,
-        llm_input_datas,
-        llm_max_retry_num,
-        llm_retry_delay,
-        train_or_test,
-        multi_turn_dialogue,
-        output_file
-):
+def process_llm_data(args):
+    llm_object, llm_input_datas, llm_max_retry_num, llm_retry_delay, train_or_test, multi_turn_dialogue = args
     llm_results = {}
 
     for item in tqdm(llm_input_datas):
         teleplay = item["teleplay"]
         episode = item["episode"]
         prompts = item["prompts"]
-        abstract = item["abstract"]
-        # train
-        plot = item["text"]
-        plot_idx = item["plot_index"]
+        summary = item["summary"]
+        dialogue_segment = item["dialogue_segment"]
+        dialogue_segment_idx = item["dialogue_segment_index"]
         wavs_path = item["wavs_path"]
-        # test
-        # plots = item["plots"]
 
         if teleplay not in llm_results:
             llm_results[teleplay] = {}
         if episode not in llm_results[teleplay]:
             llm_results[teleplay][episode] = {
-                "abstract": item["abstract"],
-                "plots": []
+                "summary": item["summary"],
+                "dialogue_segments": []
             }
 
-        # train
         for prompt_idx, prompt in enumerate(prompts):
-            llm_input_data = normalize_text(prompt.format(abstract, plot))
+            llm_input_data = normalize_text(prompt.format(summary, dialogue_segment))
             all_result = []
             llm_result = None
             status = None
@@ -305,7 +204,6 @@ def process_llm_data(
                         if llm_result in [None, ""]:
                             llm_result = normalize_text(llm_object.inference(llm_input_data))
                         else:
-                            # print(return_status_dict[status])
                             llm_result = normalize_text(llm_object.multi_turn(
                                 question1=llm_input_data,
                                 answer1=llm_result,
@@ -313,150 +211,65 @@ def process_llm_data(
                             ))
                     else:
                         llm_result = normalize_text(llm_object.inference(llm_input_data))
-                    llm_result, check_pass, sim, status = check_llm_result(llm_result, plot, train_or_test)
-                    # print(llm_result)
+                    llm_result, check_pass, sim, status = check_llm_result(llm_result, dialogue_segment, train_or_test)
                     all_result.append((llm_result, sim))
                     if not check_pass:
                         continue
-                    llm_results[teleplay][episode]["plots"].append({
-                        "plot_index": plot_idx,
+                    llm_results[teleplay][episode]["dialogue_segments"].append({
+                        "dialogue_segment_index": dialogue_segment_idx,
                         "prompt_index": prompt_idx,
-                        "text": plot,
+                        "dialogue_segment": dialogue_segment,
                         "scenario": llm_result,
                         "acceptable": True,
                         "wavs_path": wavs_path
                     })
                     break
                 except Exception as e:
-                    print(
-                        f"{teleplay} {episode} plot_{plot_idx} prompt_{prompt_idx} 尝试 {attempt + 1} 失败，错误信息：{e}")
+                    print(f"{teleplay} {episode} dialogue_segment_{dialogue_segment_idx} prompt_{prompt_idx} try {attempt + 1} fail, error msg: {e}")
                     time.sleep(llm_retry_delay)
             else:
-                print(f"{teleplay} {episode} plot_{plot_idx} prompt_{prompt_idx} 达到最大重试次数，仍未成功。")
-                llm_results[teleplay][episode]["plots"].append({
-                    "plot_index": plot_idx,
+                print(f"{teleplay} {episode} dialogue_segment_{dialogue_segment_idx} prompt_{prompt_idx} reached the maximum number of retries, still unsuccessful.")
+                llm_results[teleplay][episode]["dialogue_segments"].append({
+                    "dialogue_segment_index": dialogue_segment_idx,
                     "prompt_index": prompt_idx,
-                    "text": plot,
+                    "dialogue_segment": dialogue_segment,
                     "scenario": all_result,
                     "acceptable": False,
                     "wavs_path": wavs_path
                 })
-            # with open(output_file, "w", encoding='utf-8') as of:
-            #     json.dump(llm_results, of, ensure_ascii=False, indent=4)
-        # break
-
-        # test
-        # for plot_idx, plot in enumerate(plots):
-        #     for prompt_idx, prompt in enumerate(prompts):
-        #         llm_input_data = normalize_text(prompt.format(abstract, plot))
-        #         all_result = []
-        #         for attempt in range(llm_max_retry_num):
-        #             try:
-        #                 llm_result = normalize_text(llm_object.inference(llm_input_data))
-        #                 llm_result, check_pass, sim = check_llm_result(llm_result, plot, train_or_test)
-        #                 # print(llm_result)
-        #                 all_result.append((llm_result, sim))
-        #                 if not check_pass:
-        #                     continue
-        #                 llm_results[teleplay][episode]["plots"].append({
-        #                     "plot_index": plot_idx,
-        #                     "prompt_index": prompt_idx,
-        #                     "text": plot,
-        #                     "scenario": llm_result,
-        #                     "acceptable": True
-        #                 })
-        #                 break
-        #             except Exception as e:
-        #                 print(
-        #                     f"{teleplay} {episode} plot_{plot_idx} prompt_{prompt_idx} 尝试 {attempt + 1} 失败，错误信息：{e}")
-        #                 time.sleep(llm_retry_delay)
-        #         else:
-        #             print(f"{teleplay} {episode} plot_{plot_idx} prompt_{prompt_idx} 达到最大重试次数，仍未成功。")
-        #             llm_results[teleplay][episode]["plots"].append({
-        #                 "plot_index": plot_idx,
-        #                 "prompt_index": prompt_idx,
-        #                 "text": plot,
-        #                 "scenario": all_result,
-        #                 "acceptable": False
-        #             })
-        #         with open(output_file, "w", encoding='utf-8') as of:
-        #             json.dump(llm_results, of, ensure_ascii=False, indent=4)
-        #     break
-        # break
 
     return llm_results
-
-
-def worker_function(args):
-    idx, data_chunk, llm_objects, llm_max_retry_num, llm_retry_delay, train_or_test, multi_turn_dialogue, llm_result_json_file = args
-    output_file = f"{os.path.splitext(llm_result_json_file)[0]}_{idx}.json"
-    llm_object = llm_objects[idx]
-    return process_llm_data(
-        llm_object,
-        data_chunk,
-        llm_max_retry_num,
-        llm_retry_delay,
-        train_or_test,
-        multi_turn_dialogue,
-        output_file
-    )
-
-
-def check(results, item):
-    teleplay = item["teleplay"]
-    episode = item["episode"]
-    if teleplay in results.keys() and episode in results[teleplay].keys():
-        for plot in results[teleplay][episode]["plots"]:
-            if plot["plot_index"] == item["plot_index"] and plot["scenario"] != []:
-                return True
-    return False
 
 
 def get_llm_result(
         llm_objects,
         llm_max_retry_num,
         llm_retry_delay,
-        teleplay_episode_plots,
-        teleplay_episode_abstract,
+        dialogue_segment,
+        episode_summary,
         llm_prompts,
         train_or_test,
         multi_turn_dialogue,
-        llm_result_json_file
+        parallel_num,
+        output_path
 ):
     assert llm_objects is not None
-    if isinstance(llm_objects, list):
-        print(len(llm_objects))
-    os.makedirs(os.path.dirname(llm_result_json_file), exist_ok=True)
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
     llm_input_datas = []
     llm_results = {}
-    # part_result = "/Work21/2023/lijin/workspace/Code/SUSC/data/json/susc/test_set/llm_results/not_check.json"
-    # part_results = read_json(part_result)
 
-    for teleplay in teleplay_episode_plots:
-        for episode in teleplay_episode_plots[teleplay]:
-            abstract = max(
-                [abstract for abstract in teleplay_episode_abstract[teleplay][episode].values()],
+    for teleplay in dialogue_segment:
+        for episode in dialogue_segment[teleplay]:
+            summary = max(
+                [summary for summary in episode_summary[teleplay][episode].values()],
                 key=len
             )
-            # test
-            # llm_input_datas.append(
-            #     {
-            #         "teleplay": teleplay,
-            #         "episode": episode,
-            #         "plots": teleplay_episode_plots[teleplay][episode],
-            #         "abstract": abstract,
-            #         "prompts": llm_prompts
-            #     }
-            # )
-            # train
-            for item in teleplay_episode_plots[teleplay][episode]:
+            for item in dialogue_segment[teleplay][episode]:
                 item["teleplay"] = teleplay
                 item["episode"] = episode
-                item["abstract"] = abstract
+                item["summary"] = summary
                 item["prompts"] = llm_prompts
-                # if check(part_results, item):
-                #     continue
                 llm_input_datas.append(item)
 
     print(len(llm_input_datas))
@@ -465,13 +278,12 @@ def get_llm_result(
         llm_data_chunks[idx % len(llm_objects)].append(data)
 
     args_list = [
-        (idx, data_chunk, llm_objects, llm_max_retry_num, llm_retry_delay, train_or_test, multi_turn_dialogue,
-         llm_result_json_file)
+        (llm_objects[idx], data_chunk, llm_max_retry_num, llm_retry_delay, train_or_test, multi_turn_dialogue)
         for idx, data_chunk in enumerate(llm_data_chunks)
     ]
 
-    with Pool(processes=min(len(llm_data_chunks), 64)) as pool:
-        results = pool.map(worker_function, args_list)
+    with Pool(processes=parallel_num) as pool:
+        results = pool.map(process_llm_data, args_list)
 
     for result in results:
         for teleplay, episodes in result.items():
@@ -481,111 +293,67 @@ def get_llm_result(
                 if episode not in llm_results[teleplay]:
                     llm_results[teleplay][episode] = data
                 else:
-                    llm_results[teleplay][episode]["plots"].extend(data["plots"])
+                    llm_results[teleplay][episode]["dialogue_segments"].extend(data["dialogue_segments"])
 
-    with open(llm_result_json_file, "w", encoding='utf-8') as of:
+    with open(output_path, "w", encoding='utf-8') as of:
         json.dump(llm_results, of, ensure_ascii=False, indent=4)
 
 
-def continue_to_generate(
-        llm_object,
-        llm_max_retry_num,
-        llm_retry_delay,
-        llm_prompts,
-        llm_result_json_file
-):
-    result_data = read_json(llm_result_json_file)
-    flag = False
-    for teleplay in tqdm(result_data.keys()):
-        for episode in result_data[teleplay].keys():
-            abstract = result_data[teleplay][episode]["abstract"]
-            for plot in tqdm(result_data[teleplay][episode]["plots"]):
-                if plot["scenario"] == "结果不达标":
-                    plot_idx = plot["plot_index"]
-                    prompt_idx = plot["prompt_index"]
-                    prompt = llm_prompts[prompt_idx]
-                    plot_text = plot["text"]
-                    llm_input_data = normalize_text(prompt.format(abstract, plot_text))
-                    for attempt in range(llm_max_retry_num):
-                        try:
-                            llm_result = normalize_text(llm_object.inference(llm_input_data))
-                            llm_result, check_pass = check_llm_result(llm_result, plot_text)
-                            print(llm_result)
-                            if not check_pass:
-                                continue
-                            plot["scenario"] = llm_result
-                            break
-                        except Exception as e:
-                            print(
-                                f"{teleplay} {episode} plot_{plot_idx} prompt_{prompt_idx} 尝试 {attempt + 1} 失败，错误信息：{e}")
-                            time.sleep(llm_retry_delay)
-                    else:
-                        print(f"{teleplay} {episode} plot_{plot_idx} prompt_{prompt_idx} 达到最大重试次数，仍未成功。")
-                        plot["scenario"] = "结果不达标"
-                    with open(llm_result_json_file, "w", encoding='utf-8') as of:
-                        json.dump(result_data, of, ensure_ascii=False, indent=4)
-                    flag = True
-                    break
-        #     break
-        if flag:
-            break
-
-
 def create_llm_object(name, configure, parallel_num):
-    llm_object = None
-    if name in openai_llm:
-        openai_api_key = configure["openai_api_key"]
-        openai_base_url = configure["openai_base_url"]
-        assert openai_api_key and openai_base_url and type(openai_api_key) == type(openai_base_url)
-        if isinstance(openai_api_key, list) and isinstance(openai_base_url, list):
-            llm_object = []
-            for oak, obu in zip(openai_api_key, openai_base_url):
-                llm_object.extend([ChatGPT(name, oak, obu) for _ in range(parallel_num)])
-        else:
-            llm_object = [ChatGPT(name, openai_api_key, openai_base_url)]
+    openai_api_key = configure["openai_api_key"]
+    openai_base_url = configure["openai_base_url"]
+    assert openai_api_key and openai_base_url and type(openai_api_key) == type(openai_base_url)
+    if isinstance(openai_api_key, list) and isinstance(openai_base_url, list):
+        llm_object = []
+        for oak, obu in zip(openai_api_key, openai_base_url):
+            llm_object.extend([ChatGPT(name, oak, obu) for _ in range(parallel_num)])
+    else:
+        llm_object = [ChatGPT(name, openai_api_key, openai_base_url) for _ in range(parallel_num)]
 
     return llm_object
 
 
-if __name__ == "__main__":
-    llm_name = "gpt-3.5-turbo"
-    llm_configure = {
-        "openai_api_key": "openai_api_key",
-        "openai_base_url": 'openai_base_url',
-    }
-
-    max_retry_num = 1
-    retry_delay = 0.5
-    parallel_num = 64
-    multi_turn_dialogue = True
-
+def main(
+        dialogue_segment,
+        episode_summary,
+        train_or_test,
+        output_path,
+        max_retry_num,
+        retry_delay,
+        parallel_num,
+        multi_turn_dialogue
+):
     llm = create_llm_object(llm_name, llm_configure, parallel_num)
-    train_or_test = "train"
     prompts = get_llm_prompts(train_or_test)
-
-    teleplay_episode_plots_file = "/Work21/2023/lijin/workspace/Code/SUSC/data/json/susc/test_set/test_asr_plots.json"
-    teleplay_episode_abstract_file = "/Work21/2023/lijin/workspace/Code/SUSC/data/json/susc/teleplay_episode_summary.json"
-    teleplay_episode_plots_data = read_json(teleplay_episode_plots_file)
-    teleplay_episode_abstract_data = read_json(teleplay_episode_abstract_file)
-
-    result_json_file = f"/Work21/2023/lijin/workspace/Code/SUSC/data/json/susc/test_set/llm_results/{llm_name}_results.json"
+    dialogue_segment_data = read_json(dialogue_segment)
+    episode_summary_data = read_json(episode_summary)
 
     get_llm_result(
         llm,
         max_retry_num,
         retry_delay,
-        teleplay_episode_plots_data,
-        teleplay_episode_abstract_data,
+        dialogue_segment_data,
+        episode_summary_data,
         prompts,
         train_or_test,
         multi_turn_dialogue,
-        result_json_file
+        parallel_num,
+        output_path
     )
 
-    # continue_to_generate(
-    #     llm,
-    #     max_retry_num,
-    #     retry_delay,
-    #     prompts,
-    #     result_json_file
-    # )
+
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("dialogue_segment", type=str)
+    parser.add_argument("episode_summary", type=str)
+    parser.add_argument("train_or_test", type=str)
+    parser.add_argument("output_path", type=str)
+    parser.add_argument("--max_retry_num", type=int, default=5)
+    parser.add_argument("--retry_delay", type=float, default=0.5)
+    parser.add_argument("--parallel_num", type=int, default=32)
+    parser.add_argument("--multi_turn_dialogue", type=bool, default=True)
+    args = parser.parse_args()
+
+    main(**vars(args))

@@ -117,7 +117,7 @@ def main(video_root_dir, ocr_configure, output_path):
     ocr_config = read_json(ocr_configure)
     video_time_range = ocr_config["video_time_range"]
     video_credits_fixed_limit = ocr_config["video_credits_fixed_limit"]
-    # cut_rate  x1  x2  y1  height
+    # cut_rate  x1  x2  y2  height
     video_cut = ocr_config["video_cut"]
     video_fps = ocr_config["video_fps"]
 
