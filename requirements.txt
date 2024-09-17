@@ -1,0 +1,7 @@
+tqdm
+pytube
+yt_dlp
+moviepy
+paddleocr
+paddlepaddle
+cn2an
