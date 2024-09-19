@@ -131,8 +131,9 @@ An example of the JSON file is as follows:
 }
 ```
 
-All the reference speaker speech and speaker embeddings used in our dataset are provided in the
-file `data/reference_speaker_wav.zip`.
+The file `reference_speaker_wav.zip` in the
+link `https://drive.google.com/drive/folders/1dBVtVzx-HJuRwrBKXdFWzSAbk1_sasxQ?usp=sharing`
+provides all the reference speaker speech and speaker embeddings used in this dataset.
 
 ## Step 7: Extracting Speaker Embeddings for Reference Speaker Speech
 
@@ -205,6 +206,10 @@ python code/slice_ocr_wav.py data/video_and_audio data/ocr/filter_and_merged dat
 python code/slice_ocr_wav.py data/video_and_audio data/ocr/filter_and_merged data/segment_wav data/teleplay_segment_wav.json [0,1] 2 /path/to/wespeaker/voxceleb_resnet293_LM data/segment_wav_speaker_embedding data/segment_wav_16k data/reference_speaker data/teleplay_dialogue_segment.json --time_bias 400 --divide_num 15
 ```
 
+The files `test_segment_wav.json` and `train_segment_wav.json` in the
+link `https://drive.google.com/drive/folders/1dBVtVzx-HJuRwrBKXdFWzSAbk1_sasxQ?usp=sharing`
+provide the speech segments and their related information for this dataset.
+
 ## Step 9: Preparation Before Script Generation
 
 Before generating the script, we need to collect summaries of each episode for every TV series in a JSON file,
@@ -266,3 +271,7 @@ python code/llm.py data/teleplay_dialogue_segment.json data/teleplay_episode_sum
 ```sh
 python code/llm.py data/teleplay_dialogue_segment.json data/teleplay_episode_summary.json train data/teleplay_script.json --max_retry_num 5 --retry_delay 0.5 --parallel_num 32 --multi_turn_dialogue True
 ```
+
+The files `test_set.json` and `train_set.json` in the
+link `https://drive.google.com/drive/folders/1dBVtVzx-HJuRwrBKXdFWzSAbk1_sasxQ?usp=sharing` provide the generated scripts
+and related content for this dataset.
