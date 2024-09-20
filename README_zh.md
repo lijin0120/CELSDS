@@ -102,7 +102,7 @@ python code/filter_and_merge.py ${original_ocr_result_dir} ${output_path}
 使用样例：
 
 ```sh
-python code/filter_and_merge_ocr_results.py data/ocr/original/ data/ocr/filter_and_merged
+python code/filter_and_merge.py data/ocr/original/ data/ocr/filter_and_merged
 ```
 
 ## 步骤 6: 提取参考人物语音的说话人嵌入前的准备
