@@ -1,3 +1,14 @@
+<div align="center">
+    <h1>
+    CELSDS
+    </h1>
+    <p>
+    This is the official creation pipline of A Chinese Expressive Long-dialogue Speech Dataset with Scripts. (Submitted to ICASSP 2025)
+    </p>
+    <p>
+    </p>
+</div>
+
 ## Step 1: Preparation Before Downloading the Video
 
 Save the download links of the TV series in a JSON file, such as `data/teleplay_download_url.json`.
@@ -132,7 +143,7 @@ An example of the JSON file is as follows:
 ```
 
 The file `reference_speaker_wav.zip` in the
-link `https://drive.google.com/drive/folders/1dBVtVzx-HJuRwrBKXdFWzSAbk1_sasxQ?usp=sharing`
+link https://drive.google.com/drive/folders/1dBVtVzx-HJuRwrBKXdFWzSAbk1_sasxQ?usp=sharing
 provides all the reference speaker speech and speaker embeddings used in this dataset.
 
 ## Step 7: Extracting Speaker Embeddings for Reference Speaker Speech
@@ -207,7 +218,7 @@ python code/slice_ocr_wav.py data/video_and_audio data/ocr/filter_and_merged dat
 ```
 
 The files `test_segment_wav.json` and `train_segment_wav.json` in the
-link `https://drive.google.com/drive/folders/1dBVtVzx-HJuRwrBKXdFWzSAbk1_sasxQ?usp=sharing`
+link https://drive.google.com/drive/folders/1dBVtVzx-HJuRwrBKXdFWzSAbk1_sasxQ?usp=sharing
 provide the speech segments and their related information for this dataset.
 
 ## Step 9: Preparation Before Script Generation
@@ -273,5 +284,5 @@ python code/llm.py data/teleplay_dialogue_segment.json data/teleplay_episode_sum
 ```
 
 The files `test_set.json` and `train_set.json` in the
-link `https://drive.google.com/drive/folders/1dBVtVzx-HJuRwrBKXdFWzSAbk1_sasxQ?usp=sharing` provide the generated scripts
+link https://drive.google.com/drive/folders/1dBVtVzx-HJuRwrBKXdFWzSAbk1_sasxQ?usp=sharing provide the generated scripts
 and related content for this dataset.

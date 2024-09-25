@@ -1,3 +1,14 @@
+<div align="center">
+    <h1>
+    CELSDS
+    </h1>
+    <p>
+    这是带剧本的中文富有表现力的长对话语音数据集的官方创建流程。 (工作已提交至 ICASSP 2025)
+    </p>
+    <p>
+    </p>
+</div>
+
 ## 步骤 1: 下载视频前的准备
 
 我们需要将电视剧的下载链接保存到一个json文件中，例如`data/teleplay_download_url.json`，json文件内容样例如下：
@@ -121,7 +132,7 @@ python code/filter_and_merge.py data/ocr/original/ data/ocr/filter_and_merged
 }
 ```
 
-链接`https://drive.google.com/drive/folders/1dBVtVzx-HJuRwrBKXdFWzSAbk1_sasxQ?usp=sharing`
+链接 https://drive.google.com/drive/folders/1dBVtVzx-HJuRwrBKXdFWzSAbk1_sasxQ?usp=sharing
 中的文件`reference_speaker_wav.zip`中已给出本数据集使用到的所有参考人物语音及说话人嵌入。
 
 ## 步骤 7: 提取参考人物语音的说话人嵌入
@@ -185,7 +196,7 @@ python code/slice_ocr_wav.py data/video_and_audio data/ocr/filter_and_merged dat
 python code/slice_ocr_wav.py data/video_and_audio data/ocr/filter_and_merged data/segment_wav data/teleplay_segment_wav.json [0,1] 2 /path/to/wespeaker/voxceleb_resnet293_LM data/segment_wav_speaker_embedding data/segment_wav_16k data/reference_speaker data/teleplay_dialogue_segment.json --time_bias 400 --divide_num 15
 ```
 
-链接`https://drive.google.com/drive/folders/1dBVtVzx-HJuRwrBKXdFWzSAbk1_sasxQ?usp=sharing`
+链接 https://drive.google.com/drive/folders/1dBVtVzx-HJuRwrBKXdFWzSAbk1_sasxQ?usp=sharing
 中的文件`test_segment_wav.json`和`train_segment_wav.json`中已给出本数据集分割出的语音片段及其相关信息。
 
 ## 步骤 9: 生成剧本前的准备
@@ -249,5 +260,5 @@ python code/llm.py data/teleplay_dialogue_segment.json data/teleplay_episode_sum
 python code/llm.py data/teleplay_dialogue_segment.json data/teleplay_episode_summary.json train data/teleplay_script.json --max_retry_num 5 --retry_delay 0.5 --parallel_num 32 --multi_turn_dialogue True
 ```
 
-链接`https://drive.google.com/drive/folders/1dBVtVzx-HJuRwrBKXdFWzSAbk1_sasxQ?usp=sharing`
+链接 https://drive.google.com/drive/folders/1dBVtVzx-HJuRwrBKXdFWzSAbk1_sasxQ?usp=sharing
 中的文件`test_set.json`和`train_set.json`中已给出本数据集生成的剧本及相关内容。
