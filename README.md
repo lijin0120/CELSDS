@@ -3,7 +3,7 @@
     CELSDS
     </h1>
     <p>
-    This is the official implement of A Chinese Expressive Long-dialogue Speech Dataset with Scripts (Submitted to ICASSP 2025). The data is partially stored at the link <a> https://drive.google.com/drive/folders/1dBVtVzx-HJuRwrBKXdFWzSAbk1_sasxQ?usp=sharing </a> .
+    This is the official implement of A Chinese Expressive Long-dialogue Speech Dataset with Scripts (Submitted to ICASSP 2025). The data is partially stored at <a href="https://drive.google.com/drive/folders/1dBVtVzx-HJuRwrBKXdFWzSAbk1_sasxQ?usp=sharing">CELSDS</a> .
     </p>
     <p>
     </p>
