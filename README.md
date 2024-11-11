@@ -286,3 +286,8 @@ python code/llm.py data/teleplay_dialogue_segment.json data/teleplay_episode_sum
 The files `test_set.json` and `train_set.json` in the
 link https://drive.google.com/drive/folders/1dBVtVzx-HJuRwrBKXdFWzSAbk1_sasxQ?usp=sharing provide the generated scripts
 and related content for this dataset.
+
+## License
+
+The CELSDS dataset is available to download for non-commercial purposes under a <a href="https://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 International License</a>. 
+CELSDS doesn't own the copyright of the audios, the copyright remains with the original owners of the video, and the public URL is given for the original video.

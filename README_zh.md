@@ -262,3 +262,8 @@ python code/llm.py data/teleplay_dialogue_segment.json data/teleplay_episode_sum
 
 链接 https://drive.google.com/drive/folders/1dBVtVzx-HJuRwrBKXdFWzSAbk1_sasxQ?usp=sharing
 中的文件`test_set.json`和`train_set.json`中已给出本数据集生成的剧本及相关内容。
+
+## 许可协议
+
+CELSDS 数据集可供下载并仅限于非商业用途，遵循 <a href="https://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 International License</a> 许可协议。
+CELSDS 不拥有音频的版权，音频的版权归原始视频的所有者所有，数据集中提供了指向原始视频的公开 URL。
